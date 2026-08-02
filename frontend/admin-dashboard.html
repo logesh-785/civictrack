@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Dashboard · CivicTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="mobile-topbar">
+    <button id="menu-toggle" aria-label="Open menu">☰</button>
+    <div class="auth-brand" style="color:#fff;"><div class="mark">C</div>CivicTrack Admin</div>
+    <div style="width:24px;"></div>
+  </div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="mark">C</div>CivicTrack <span style="opacity:.6;">Admin</span></div>
+    <nav>
+      <a href="#overview" class="nav-tab active" data-tab="overview"><span class="icon">📊</span> Overview</a>
+      <a href="#issues" class="nav-tab" data-tab="issues"><span class="icon">🗂️</span> Manage Issues</a>
+      <a href="#users" class="nav-tab" data-tab="users"><span class="icon">👥</span> Citizens</a>
+    </nav>
+    <div class="user-box">
+      <div class="name">Administrator</div>
+      <div class="role">Municipal Staff</div>
+      <button class="btn btn-ghost btn-sm btn-block" id="logout-btn" style="color:#f2b8b8; justify-content:flex-start; padding-left:0;">↩ Log Out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ============ OVERVIEW TAB ============ -->
+    <section id="tab-overview" class="tab-section">
+      <div class="main-header">
+        <div>
+          <h1>Admin Overview</h1>
+          <p class="sub">City-wide snapshot of all reported civic issues.</p>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="top"><span class="label">Total Issues</span><div class="icon-circle" style="background:var(--primary);">🗂️</div></div>
+          <div class="value" id="ov-total">0</div>
+          <div class="label">All time</div>
+        </div>
+        <div class="stat-card">
+          <div class="top"><span class="label">Reported</span><div class="icon-circle" style="background:var(--warning);">🆕</div></div>
+          <div class="value" id="ov-reported">0</div>
+          <div class="label">Awaiting review</div>
+        </div>
+        <div class="stat-card">
+          <div class="top"><span class="label">In Progress</span><div class="icon-circle" style="background:#3454b4;">⏳</div></div>
+          <div class="value" id="ov-progress">0</div>
+          <div class="label">Being resolved</div>
+        </div>
+        <div class="stat-card">
+          <div class="top"><span class="label">Resolved</span><div class="icon-circle" style="background:var(--success);">✅</div></div>
+          <div class="value" id="ov-resolved">0</div>
+          <div class="label">Completed</div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:22px;">
+        <h3 style="font-size:15px; margin-bottom:16px;">Issues by Category</h3>
+        <div id="category-bars"></div>
+      </div>
+    </section>
+
+    <!-- ============ ISSUES TAB ============ -->
+    <section id="tab-issues" class="tab-section" style="display:none;">
+      <div class="main-header">
+        <div>
+          <h1>Manage Issues</h1>
+          <p class="sub">Review, assign departments, and update the status of every report.</p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="icn">🔍</span>
+          <input type="text" id="admin-search" placeholder="Search by title or location..." />
+        </div>
+        <select id="admin-category-filter">
+          <option value="">All Categories</option>
+          <option>Road & Potholes</option>
+          <option>Streetlights</option>
+          <option>Garbage & Sanitation</option>
+          <option>Water Supply</option>
+          <option>Drainage</option>
+          <option>Public Property Damage</option>
+          <option>Other</option>
+        </select>
+        <select id="admin-status-filter">
+          <option value="">All Statuses</option>
+          <option>Reported</option>
+          <option>In Progress</option>
+          <option>Resolved</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Issue</th>
+              <th>Category</th>
+              <th>Reporter</th>
+              <th>Reported On</th>
+              <th>Upvotes</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-issues-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ USERS TAB ============ -->
+    <section id="tab-users" class="tab-section" style="display:none;">
+      <div class="main-header">
+        <div>
+          <h1>Registered Citizens</h1>
+          <p class="sub">Everyone who has created an account on CivicTrack.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Email</th><th>Phone</th><th>Issues Reported</th><th>Joined</th></tr>
+          </thead>
+          <tbody id="users-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  Auth.requireRole("admin", "admin-login.html");
+  document.getElementById("logout-btn").addEventListener("click", () => Auth.logout("admin-login.html"));
+  document.getElementById("menu-toggle").addEventListener("click", () => {
+    document.getElementById("sidebar").classList.toggle("open");
+  });
+
+  // ---------- Tab switching ----------
+  document.querySelectorAll(".nav-tab").forEach((tab) => {
+    tab.addEventListener("click", (e) => {
+      e.preventDefault();
+      document.querySelectorAll(".nav-tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      document.querySelectorAll(".tab-section").forEach((s) => (s.style.display = "none"));
+      document.getElementById("tab-" + tab.dataset.tab).style.display = "block";
+      document.getElementById("sidebar").classList.remove("open");
+      if (tab.dataset.tab === "users") loadUsers();
+      if (tab.dataset.tab === "issues") loadAdminIssues();
+      if (tab.dataset.tab === "overview") loadOverview();
+    });
+  });
+
+  const CAT_COLORS = ["#028090", "#00A896", "#02C39A", "#3454b4", "#d98c2b", "#c94b4b", "#5c7a82"];
+
+  async function loadOverview() {
+    try {
+      const data = await apiRequest("/issues/stats", { auth: false });
+      document.getElementById("ov-total").textContent = data.totals.total || 0;
+      document.getElementById("ov-reported").textContent = data.totals.reported || 0;
+      document.getElementById("ov-progress").textContent = data.totals.inProgress || 0;
+      document.getElementById("ov-resolved").textContent = data.totals.resolved || 0;
+
+      const max = Math.max(1, ...data.byCategory.map((c) => c.count));
+      const wrap = document.getElementById("category-bars");
+      if (data.byCategory.length === 0) {
+        wrap.innerHTML = `<p class="cell-muted">No issues reported yet.</p>`;
+        return;
+      }
+      wrap.innerHTML = data.byCategory
+        .map((c, i) => `
+          <div style="margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;">
+              <span>${escapeHtml(c.category)}</span><b>${c.count}</b>
+            </div>
+            <div style="background:#eef5f4; border-radius:6px; height:8px; overflow:hidden;">
+              <div style="width:${(c.count / max) * 100}%; height:100%; background:${CAT_COLORS[i % CAT_COLORS.length]};"></div>
+            </div>
+          </div>`)
+        .join("");
+    } catch (err) {
+      showToast("Couldn't load statistics.", "error");
+    }
+  }
+
+  async function loadAdminIssues() {
+    const tbody = document.getElementById("admin-issues-body");
+    const params = new URLSearchParams();
+    const search = document.getElementById("admin-search").value.trim();
+    const category = document.getElementById("admin-category-filter").value;
+    const status = document.getElementById("admin-status-filter").value;
+    if (search) params.set("search", search);
+    if (category) params.set("category", category);
+    if (status) params.set("status", status);
+
+    try {
+      const issues = await apiRequest("/issues?" + params.toString(), { auth: false });
+      if (issues.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="glyph">🗂️</div><p>No issues match your filters.</p></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = issues
+        .map(
+          (i) => `
+        <tr>
+          <td>
+            <div class="cell-title">${escapeHtml(i.title)}</div>
+            <div class="cell-muted">📍 ${escapeHtml(i.location || "—")}</div>
+          </td>
+          <td>${escapeHtml(i.category)}</td>
+          <td>${escapeHtml(i.reporter_name)}</td>
+          <td class="cell-muted">${formatDate(i.created_at)}</td>
+          <td>▲ ${i.upvote_count}</td>
+          <td>
+            <select class="status-select" data-id="${i.issue_id}">
+              <option ${i.status === "Reported" ? "selected" : ""}>Reported</option>
+              <option ${i.status === "In Progress" ? "selected" : ""}>In Progress</option>
+              <option ${i.status === "Resolved" ? "selected" : ""}>Resolved</option>
+            </select>
+          </td>
+          <td>
+            <button class="btn btn-danger btn-sm" data-delete="${i.issue_id}">Delete</button>
+          </td>
+        </tr>`
+        )
+        .join("");
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="7">Couldn't load issues.</td></tr>`;
+    }
+  }
+
+  document.getElementById("admin-issues-body").addEventListener("change", async (e) => {
+    if (e.target.classList.contains("status-select")) {
+      const id = e.target.dataset.id;
+      const status = e.target.value;
+      try {
+        await apiRequest(`/admin/issues/${id}/status`, { method: "PUT", body: { status } });
+        showToast(`Issue #${id} marked as "${status}".`, "success");
+        loadOverview();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+  });
+
+  document.getElementById("admin-issues-body").addEventListener("click", async (e) => {
+    const delBtn = e.target.closest("[data-delete]");
+    if (!delBtn) return;
+    if (!confirm("Delete this issue permanently?")) return;
+    try {
+      await apiRequest(`/admin/issues/${delBtn.dataset.delete}`, { method: "DELETE" });
+      showToast("Issue deleted.", "success");
+      loadAdminIssues();
+      loadOverview();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  });
+
+  document.getElementById("admin-search").addEventListener("input", debounce(loadAdminIssues, 350));
+  document.getElementById("admin-category-filter").addEventListener("change", loadAdminIssues);
+  document.getElementById("admin-status-filter").addEventListener("change", loadAdminIssues);
+
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  async function loadUsers() {
+    const tbody = document.getElementById("users-body");
+    try {
+      const users = await apiRequest("/admin/users");
+      if (users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="glyph">👥</div><p>No citizens registered yet.</p></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = users
+        .map(
+          (u) => `
+        <tr>
+          <td class="cell-title">${escapeHtml(u.name)}</td>
+          <td>${escapeHtml(u.email)}</td>
+          <td>${escapeHtml(u.phone || "—")}</td>
+          <td>${u.issues_reported}</td>
+          <td class="cell-muted">${formatDate(u.created_at)}</td>
+        </tr>`
+        )
+        .join("");
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="5">Couldn't load users.</td></tr>`;
+    }
+  }
+
+  loadOverview();
+</script>
+<script src="js/chatbot.js"></script>
+</body>
+</html>

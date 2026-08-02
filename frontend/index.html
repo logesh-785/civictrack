@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Login · CivicTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-visual">
+    <div class="blob blob1"></div>
+    <div class="blob blob2"></div>
+    <div class="auth-brand">
+      <div class="mark">C</div>
+      CivicTrack
+    </div>
+    <div>
+      <h2>Report it. Track it. Get it fixed.</h2>
+      <p class="lead">Join thousands of citizens making their neighborhoods better — one report at a time.</p>
+      <div class="auth-stats">
+        <div><b id="stat-total">—</b><span>Issues Logged</span></div>
+        <div><b id="stat-resolved">—</b><span>Resolved</span></div>
+        <div><b>24/7</b><span>Civic Assist bot</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-form-side">
+    <div class="auth-form-box">
+      <h1>Welcome back</h1>
+      <p class="sub">Log in to report and track civic issues in your area.</p>
+
+      <div class="form-error" id="form-error"></div>
+
+      <form id="login-form">
+        <div class="field">
+          <label for="email">Email address</label>
+          <input type="email" id="email" required placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" required placeholder="••••••••" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="login-btn">Log In</button>
+      </form>
+
+      <p class="switcher">Don't have an account? <a href="register.html">Create one</a></p>
+      <a href="admin-login.html" class="admin-link">Administrator? Sign in here →</a>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  // If already logged in, skip straight to the right dashboard
+  if (Auth.isLoggedIn()) {
+    window.location.href = Auth.isAdmin() ? "admin-dashboard.html" : "dashboard.html";
+  }
+
+  const form = document.getElementById("login-form");
+  const errorBox = document.getElementById("form-error");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorBox.classList.remove("show");
+    const btn = document.getElementById("login-btn");
+    btn.disabled = true;
+    btn.textContent = "Logging in...";
+
+    try {
+      const data = await apiRequest("/auth/login", {
+        method: "POST",
+        auth: false,
+        body: {
+          email: document.getElementById("email").value.trim(),
+          password: document.getElementById("password").value,
+        },
+      });
+      Auth.saveSession(data.token, data.user);
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.classList.add("show");
+      btn.disabled = false;
+      btn.textContent = "Log In";
+    }
+  });
+
+  // Landing stats (public, no auth needed)
+  apiRequest("/issues/stats", { auth: false })
+    .then((d) => {
+      document.getElementById("stat-total").textContent = d.totals.total || 0;
+      document.getElementById("stat-resolved").textContent = d.totals.resolved || 0;
+    })
+    .catch(() => {});
+</script>
+<script src="js/chatbot.js"></script>
+</body>
+</html>

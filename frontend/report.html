@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Report an Issue · CivicTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="mobile-topbar">
+    <button id="menu-toggle" aria-label="Open menu">☰</button>
+    <div class="auth-brand" style="color:#fff;"><div class="mark">C</div>CivicTrack</div>
+    <div style="width:24px;"></div>
+  </div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="mark">C</div>CivicTrack</div>
+    <nav>
+      <a href="dashboard.html"><span class="icon">🏠</span> My Dashboard</a>
+      <a href="report.html" class="active"><span class="icon">📝</span> Report Issue</a>
+      <a href="dashboard.html#browse"><span class="icon">🗺️</span> Browse Issues</a>
+    </nav>
+    <div class="user-box">
+      <div class="name" id="sb-name">—</div>
+      <div class="role">Citizen</div>
+      <button class="btn btn-ghost btn-sm btn-block" id="logout-btn" style="color:#f2b8b8; justify-content:flex-start; padding-left:0;">↩ Log Out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-header">
+      <div>
+        <h1>Report a Civic Issue</h1>
+        <p class="sub">Give us the details — photo, location, and description help authorities act faster.</p>
+      </div>
+    </div>
+
+    <div class="card" style="max-width: 720px; padding: 28px;">
+      <div class="form-error" id="form-error"></div>
+      <div class="form-success" id="form-success"></div>
+
+      <form id="report-form">
+        <div class="field">
+          <label for="title">Issue title</label>
+          <input type="text" id="title" required placeholder="e.g. Large pothole on Anna Salai" />
+        </div>
+
+        <div class="field">
+          <label for="category">Category</label>
+          <select id="category" required>
+            <option value="" disabled selected>Select a category</option>
+            <option>Road & Potholes</option>
+            <option>Streetlights</option>
+            <option>Garbage & Sanitation</option>
+            <option>Water Supply</option>
+            <option>Drainage</option>
+            <option>Public Property Damage</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="description">Description</label>
+          <textarea id="description" placeholder="Describe the issue in a few sentences..."></textarea>
+        </div>
+
+        <div class="field">
+          <label for="location">Location / Landmark</label>
+          <input type="text" id="location" placeholder="e.g. Near Anna Nagar West bus stop" />
+        </div>
+
+        <div class="field" style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label for="latitude">Latitude <span style="font-weight:400; color:var(--muted);">(optional)</span></label>
+            <input type="text" id="latitude" placeholder="13.0850" />
+          </div>
+          <div style="flex:1;">
+            <label for="longitude">Longitude <span style="font-weight:400; color:var(--muted);">(optional)</span></label>
+            <input type="text" id="longitude" placeholder="80.2101" />
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" id="use-location-btn" style="margin-bottom:18px;">📍 Use my current location</button>
+
+        <div class="field">
+          <label for="photo">Photo evidence <span style="font-weight:400; color:var(--muted);">(optional, JPG/PNG/WEBP, max 5MB)</span></label>
+          <input type="file" id="photo" accept="image/jpeg,image/png,image/webp" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="submit-btn">Submit Report</button>
+      </form>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  Auth.requireRole("citizen", "index.html");
+  document.getElementById("sb-name").textContent = Auth.getUser().name;
+
+  document.getElementById("logout-btn").addEventListener("click", () => Auth.logout());
+  document.getElementById("menu-toggle").addEventListener("click", () => {
+    document.getElementById("sidebar").classList.toggle("open");
+  });
+
+  document.getElementById("use-location-btn").addEventListener("click", () => {
+    if (!navigator.geolocation) return showToast("Geolocation isn't supported on this browser.", "error");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        document.getElementById("latitude").value = pos.coords.latitude.toFixed(6);
+        document.getElementById("longitude").value = pos.coords.longitude.toFixed(6);
+        showToast("Location captured.", "success");
+      },
+      () => showToast("Couldn't get your location. Enter it manually.", "error")
+    );
+  });
+
+  const form = document.getElementById("report-form");
+  const errorBox = document.getElementById("form-error");
+  const successBox = document.getElementById("form-success");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorBox.classList.remove("show");
+    successBox.classList.remove("show");
+    const btn = document.getElementById("submit-btn");
+    btn.disabled = true;
+    btn.textContent = "Submitting...";
+
+    const fd = new FormData();
+    fd.append("title", document.getElementById("title").value.trim());
+    fd.append("category", document.getElementById("category").value);
+    fd.append("description", document.getElementById("description").value.trim());
+    fd.append("location", document.getElementById("location").value.trim());
+    fd.append("latitude", document.getElementById("latitude").value);
+    fd.append("longitude", document.getElementById("longitude").value);
+    const photoFile = document.getElementById("photo").files[0];
+    if (photoFile) fd.append("photo", photoFile);
+
+    try {
+      await apiRequest("/issues", { method: "POST", isForm: true, body: fd });
+      successBox.textContent = "Issue reported successfully! Redirecting to your dashboard...";
+      successBox.classList.add("show");
+      form.reset();
+      setTimeout(() => (window.location.href = "dashboard.html"), 1400);
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.classList.add("show");
+      btn.disabled = false;
+      btn.textContent = "Submit Report";
+    }
+  });
+</script>
+<script src="js/chatbot.js"></script>
+</body>
+</html>

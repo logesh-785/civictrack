@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create Account · CivicTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-visual">
+    <div class="blob blob1"></div>
+    <div class="blob blob2"></div>
+    <div class="auth-brand">
+      <div class="mark">C</div>
+      CivicTrack
+    </div>
+    <div>
+      <h2>Your voice fixes your street.</h2>
+      <p class="lead">Create a free account to report potholes, broken lights, garbage issues, and more — with photo proof and live status tracking.</p>
+    </div>
+  </div>
+
+  <div class="auth-form-side">
+    <div class="auth-form-box">
+      <h1>Create your account</h1>
+      <p class="sub">It only takes a minute.</p>
+
+      <div class="form-error" id="form-error"></div>
+
+      <form id="register-form">
+        <div class="field">
+          <label for="name">Full name</label>
+          <input type="text" id="name" required placeholder="e.g. Priya Kumar" />
+        </div>
+        <div class="field">
+          <label for="email">Email address</label>
+          <input type="email" id="email" required placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label for="phone">Phone number <span style="color:var(--muted); font-weight:400;">(optional)</span></label>
+          <input type="tel" id="phone" placeholder="9876543210" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" required minlength="6" placeholder="At least 6 characters" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="register-btn">Create Account</button>
+      </form>
+
+      <p class="switcher">Already have an account? <a href="index.html">Log in</a></p>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  if (Auth.isLoggedIn()) {
+    window.location.href = Auth.isAdmin() ? "admin-dashboard.html" : "dashboard.html";
+  }
+
+  const form = document.getElementById("register-form");
+  const errorBox = document.getElementById("form-error");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorBox.classList.remove("show");
+    const btn = document.getElementById("register-btn");
+    btn.disabled = true;
+    btn.textContent = "Creating account...";
+
+    try {
+      const data = await apiRequest("/auth/register", {
+        method: "POST",
+        auth: false,
+        body: {
+          name: document.getElementById("name").value.trim(),
+          email: document.getElementById("email").value.trim(),
+          phone: document.getElementById("phone").value.trim(),
+          password: document.getElementById("password").value,
+        },
+      });
+      Auth.saveSession(data.token, data.user);
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.classList.add("show");
+      btn.disabled = false;
+      btn.textContent = "Create Account";
+    }
+  });
+</script>
+<script src="js/chatbot.js"></script>
+</body>
+</html>

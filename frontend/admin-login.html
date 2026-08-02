@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Login · CivicTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-visual">
+    <div class="blob blob1"></div>
+    <div class="blob blob2"></div>
+    <div class="auth-brand">
+      <div class="mark">C</div>
+      CivicTrack <span style="opacity:.6; font-weight:500;">/ Admin</span>
+    </div>
+    <div>
+      <h2>Run your city's civic dashboard.</h2>
+      <p class="lead">Review incoming reports, assign departments, and resolve issues — all from one console.</p>
+    </div>
+  </div>
+
+  <div class="auth-form-side">
+    <div class="auth-form-box">
+      <h1>Administrator Login</h1>
+      <p class="sub">Restricted access for municipal staff only.</p>
+
+      <div class="form-error" id="form-error"></div>
+
+      <form id="admin-login-form">
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" required placeholder="admin" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" required placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="login-btn">Sign In to Console</button>
+      </form>
+
+      <p class="switcher">Not an admin? <a href="index.html">Go to citizen login</a></p>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  if (Auth.isLoggedIn() && Auth.isAdmin()) {
+    window.location.href = "admin-dashboard.html";
+  }
+
+  const form = document.getElementById("admin-login-form");
+  const errorBox = document.getElementById("form-error");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorBox.classList.remove("show");
+    const btn = document.getElementById("login-btn");
+    btn.disabled = true;
+    btn.textContent = "Signing in...";
+
+    try {
+      const data = await apiRequest("/auth/admin-login", {
+        method: "POST",
+        auth: false,
+        body: {
+          username: document.getElementById("username").value.trim(),
+          password: document.getElementById("password").value,
+        },
+      });
+      Auth.saveSession(data.token, data.user);
+      window.location.href = "admin-dashboard.html";
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.classList.add("show");
+      btn.disabled = false;
+      btn.textContent = "Sign In to Console";
+    }
+  });
+</script>
+</body>
+</html>

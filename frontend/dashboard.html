@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Dashboard · CivicTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="mobile-topbar">
+    <button id="menu-toggle" aria-label="Open menu">☰</button>
+    <div class="auth-brand" style="color:#fff;"><div class="mark">C</div>CivicTrack</div>
+    <div style="width:24px;"></div>
+  </div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="mark">C</div>CivicTrack</div>
+    <nav>
+      <a href="dashboard.html" class="active"><span class="icon">🏠</span> My Dashboard</a>
+      <a href="report.html"><span class="icon">📝</span> Report Issue</a>
+      <a href="#browse" id="nav-browse"><span class="icon">🗺️</span> Browse Issues</a>
+    </nav>
+    <div class="user-box">
+      <div class="name" id="sb-name">—</div>
+      <div class="role">Citizen</div>
+      <button class="btn btn-ghost btn-sm btn-block" id="logout-btn" style="color:#f2b8b8; justify-content:flex-start; padding-left:0;">↩ Log Out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-header">
+      <div>
+        <h1>Welcome back, <span id="welcome-name">—</span> 👋</h1>
+        <p class="sub">Here's what's happening with your reports.</p>
+      </div>
+      <a href="report.html" class="btn btn-primary">+ Report New Issue</a>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="top"><span class="label">Total Reported</span><div class="icon-circle" style="background:var(--primary);">📋</div></div>
+        <div class="value" id="stat-mine-total">0</div>
+        <div class="label">Issues you've submitted</div>
+      </div>
+      <div class="stat-card">
+        <div class="top"><span class="label">In Progress</span><div class="icon-circle" style="background:#3454b4;">⏳</div></div>
+        <div class="value" id="stat-mine-progress">0</div>
+        <div class="label">Being worked on</div>
+      </div>
+      <div class="stat-card">
+        <div class="top"><span class="label">Resolved</span><div class="icon-circle" style="background:var(--success);">✅</div></div>
+        <div class="value" id="stat-mine-resolved">0</div>
+        <div class="label">Successfully fixed</div>
+      </div>
+    </div>
+
+    <h2 style="font-size:18px; margin-bottom:14px;">My Reported Issues</h2>
+    <div id="mine-container" class="issue-grid" style="margin-bottom:40px;"></div>
+
+    <div id="browse" style="scroll-margin-top: 20px;">
+      <h2 style="font-size:18px; margin-bottom:14px;">Browse Nearby Issues</h2>
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="icn">🔍</span>
+          <input type="text" id="search-input" placeholder="Search by title or location..." />
+        </div>
+        <select id="category-filter">
+          <option value="">All Categories</option>
+          <option>Road & Potholes</option>
+          <option>Streetlights</option>
+          <option>Garbage & Sanitation</option>
+          <option>Water Supply</option>
+          <option>Drainage</option>
+          <option>Public Property Damage</option>
+          <option>Other</option>
+        </select>
+        <select id="status-filter">
+          <option value="">All Statuses</option>
+          <option>Reported</option>
+          <option>In Progress</option>
+          <option>Resolved</option>
+        </select>
+      </div>
+      <div id="browse-container" class="issue-grid"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Issue detail modal -->
+<div class="modal-overlay" id="issue-modal">
+  <div class="modal-box" id="issue-modal-body"></div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  Auth.requireRole("citizen", "index.html");
+  const me = Auth.getUser();
+  document.getElementById("sb-name").textContent = me.name;
+  document.getElementById("welcome-name").textContent = me.name.split(" ")[0];
+  document.getElementById("logout-btn").addEventListener("click", () => Auth.logout());
+  document.getElementById("menu-toggle").addEventListener("click", () => {
+    document.getElementById("sidebar").classList.toggle("open");
+  });
+  document.getElementById("nav-browse").addEventListener("click", (e) => {
+    document.getElementById("browse").scrollIntoView({ behavior: "smooth" });
+  });
+
+  const CATEGORY_ICON = {
+    "Road & Potholes": "🛣️",
+    "Streetlights": "💡",
+    "Garbage & Sanitation": "🗑️",
+    "Water Supply": "🚰",
+    "Drainage": "🌊",
+    "Public Property Damage": "🏛️",
+    "Other": "📌",
+  };
+
+  function issueCardHtml(issue, opts = {}) {
+    const thumb = issue.photo_url
+      ? `<img src="${issue.photo_url}" alt="${escapeHtml(issue.title)}" />`
+      : (CATEGORY_ICON[issue.category] || "📌");
+    return `
+      <div class="issue-card" data-id="${issue.issue_id}">
+        <div class="thumb">${thumb}</div>
+        <div class="body">
+          <div class="cat">${escapeHtml(issue.category)}</div>
+          <h3>${escapeHtml(issue.title)}</h3>
+          <div class="loc">📍 ${escapeHtml(issue.location || "Location not specified")}</div>
+          ${statusBadge(issue.status)}
+          <div class="foot">
+            <span class="cell-muted">${formatDate(issue.created_at)}</span>
+            ${opts.showUpvote ? `<button class="upvote-btn" data-upvote="${issue.issue_id}">▲ ${issue.upvote_count}</button>` : `<span class="cell-muted">${issue.upvote_count} upvotes</span>`}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function loadMine() {
+    const container = document.getElementById("mine-container");
+    try {
+      const issues = await apiRequest("/issues/mine");
+      document.getElementById("stat-mine-total").textContent = issues.length;
+      document.getElementById("stat-mine-progress").textContent = issues.filter((i) => i.status === "In Progress").length;
+      document.getElementById("stat-mine-resolved").textContent = issues.filter((i) => i.status === "Resolved").length;
+
+      if (issues.length === 0) {
+        container.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="glyph">🗂️</div><p>You haven't reported any issues yet.</p><a href="report.html" class="btn btn-primary btn-sm">Report your first issue</a></div>`;
+        return;
+      }
+      container.innerHTML = issues.map((i) => issueCardHtml(i)).join("");
+    } catch (err) {
+      container.innerHTML = `<p class="cell-muted">Couldn't load your issues.</p>`;
+    }
+  }
+
+  async function loadBrowse() {
+    const container = document.getElementById("browse-container");
+    const params = new URLSearchParams();
+    const search = document.getElementById("search-input").value.trim();
+    const category = document.getElementById("category-filter").value;
+    const status = document.getElementById("status-filter").value;
+    if (search) params.set("search", search);
+    if (category) params.set("category", category);
+    if (status) params.set("status", status);
+
+    try {
+      const issues = await apiRequest("/issues?" + params.toString(), { auth: false });
+      if (issues.length === 0) {
+        container.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="glyph">🔍</div><p>No issues match your filters.</p></div>`;
+        return;
+      }
+      container.innerHTML = issues.map((i) => issueCardHtml(i, { showUpvote: true })).join("");
+    } catch (err) {
+      container.innerHTML = `<p class="cell-muted">Couldn't load issues.</p>`;
+    }
+  }
+
+  document.body.addEventListener("click", async (e) => {
+    const upBtn = e.target.closest("[data-upvote]");
+    if (upBtn) {
+      e.stopPropagation();
+      try {
+        const data = await apiRequest(`/issues/${upBtn.dataset.upvote}/upvote`, { method: "POST" });
+        upBtn.textContent = `▲ ${data.upvote_count}`;
+        upBtn.classList.add("voted");
+        showToast("Thanks for upvoting!", "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+      return;
+    }
+
+    const card = e.target.closest(".issue-card");
+    if (card) openIssueModal(card.dataset.id);
+  });
+
+  async function openIssueModal(id) {
+    const modal = document.getElementById("issue-modal");
+    const box = document.getElementById("issue-modal-body");
+    box.innerHTML = "Loading...";
+    modal.classList.add("show");
+    try {
+      const issue = await apiRequest(`/issues/${id}`, { auth: false });
+      box.innerHTML = `
+        <button class="close-x" id="modal-close">✕</button>
+        <div class="cat">${escapeHtml(issue.category)}</div>
+        <h3 style="margin-bottom:8px;">${escapeHtml(issue.title)}</h3>
+        ${statusBadge(issue.status)}
+        <p style="margin-top:14px;">${escapeHtml(issue.description || "No description provided.")}</p>
+        <p class="cell-muted">📍 ${escapeHtml(issue.location || "—")}</p>
+        <p class="cell-muted">Reported by ${escapeHtml(issue.reporter_name)} on ${formatDate(issue.created_at)}</p>
+        ${issue.photo_url ? `<img src="${issue.photo_url}" style="border-radius:10px; margin-top:12px;" />` : ""}
+        <h4 style="margin-top:18px; font-size:14px;">Status History</h4>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+          ${issue.history.map((h) => `<div style="font-size:13px;"><b>${h.status}</b> — ${escapeHtml(h.remarks || "")} <span class="cell-muted">(${formatDate(h.updated_at)})</span></div>`).join("")}
+        </div>
+      `;
+      document.getElementById("modal-close").addEventListener("click", () => modal.classList.remove("show"));
+    } catch (err) {
+      box.innerHTML = `<button class="close-x" id="modal-close">✕</button><p>Couldn't load this issue.</p>`;
+      document.getElementById("modal-close").addEventListener("click", () => modal.classList.remove("show"));
+    }
+  }
+  document.getElementById("issue-modal").addEventListener("click", (e) => {
+    if (e.target.id === "issue-modal") e.target.classList.remove("show");
+  });
+
+  document.getElementById("search-input").addEventListener("input", debounce(loadBrowse, 350));
+  document.getElementById("category-filter").addEventListener("change", loadBrowse);
+  document.getElementById("status-filter").addEventListener("change", loadBrowse);
+
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  loadMine();
+  loadBrowse();
+</script>
+<script src="js/chatbot.js"></script>
+</body>
+</html>
