@@ -12,4 +12,4 @@ const db = mysql.createConnection({
   }
 });
 
-module.exports = pool;
+module.exports = db;
