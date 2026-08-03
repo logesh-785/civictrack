@@ -49,15 +49,23 @@ router.get("/users", verifyAdmin, async (req, res) => {
 });
 
 // ---------- DELETE /api/admin/issues/:id ----------
+// ----------- DELETE /api/admin/issues/:id -----------
 router.delete("/issues/:id", verifyAdmin, async (req, res) => {
   try {
+    // 1. Muthaula antha issue-ku related aana status updates-ah delete panrathu
+    await pool.query("DELETE FROM status_updates WHERE issue_id = ?", [req.params.id]);
+
+    // 2. Aparam issues table-la irunthu main issue-ah delete panrathu
     const [result] = await pool.query("DELETE FROM issues WHERE issue_id = ?", [req.params.id]);
+    
     if (result.affectedRows === 0) return res.status(404).json({ message: "Issue not found." });
     res.json({ message: "Issue deleted." });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to delete issue." });
   }
+});
+
 });
 
 module.exports = router;
