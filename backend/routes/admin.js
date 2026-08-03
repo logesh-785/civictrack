@@ -66,6 +66,4 @@ router.delete("/issues/:id", verifyAdmin, async (req, res) => {
   }
 });
 
-});
-
 module.exports = router;
